@@ -1,5 +1,4 @@
 import streamlit as st
-import ollama
 import urllib.request
 import json
 import re
@@ -137,18 +136,8 @@ st.markdown("""
 
 # ----------------- Helper Functions -----------------
 
-@st.cache_data(ttl=10)
-def check_ollama():
-    """Check if Ollama server is running and get installed models."""
-    try:
-        models_data = ollama.list()
-        model_names = [m['model'] for m in models_data.get('models', [])]
-        return True, model_names
-    except Exception:
-        return False, []
-
 def call_gemini(api_key, system_prompt, user_content):
-    """Fallback to Gemini API via direct HTTP request to avoid extra dependencies."""
+    """Call Google Gemini API via direct HTTP request."""
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
     data = {
@@ -173,40 +162,20 @@ def call_gemini(api_key, system_prompt, user_content):
         raise Exception(f"Gemini API execution failed: {e}")
 
 def call_llm(system_prompt, user_content, messages_history=None):
-    """Central function to invoke either local Ollama or cloud Gemini."""
-    if st.session_state.use_cloud:
-        if not st.session_state.api_key:
-            st.error("Please enter a valid Gemini API Key in the sidebar/settings.")
-            st.stop()
-        
-        # Build prompt from history if refinement is active
-        if messages_history:
-            combined_prompt = ""
-            for msg in messages_history:
-                combined_prompt += f"{msg['role'].upper()}: {msg['content']}\n\n"
-            combined_prompt += f"USER: {user_content}"
-            return call_gemini(st.session_state.api_key, system_prompt, combined_prompt)
-        else:
-            return call_gemini(st.session_state.api_key, system_prompt, user_content)
+    """Central function to invoke cloud Gemini API."""
+    if not st.session_state.api_key.strip():
+        st.error("Please enter a valid Gemini API Key in the sidebar.")
+        st.stop()
+    
+    # Build prompt from history if refinement is active
+    if messages_history:
+        combined_prompt = ""
+        for msg in messages_history:
+            combined_prompt += f"{msg['role'].upper()}: {msg['content']}\n\n"
+        combined_prompt += f"USER: {user_content}"
+        return call_gemini(st.session_state.api_key, system_prompt, combined_prompt)
     else:
-        model_to_use = st.session_state.selected_model
-        if not model_to_use:
-            st.error("No local model selected. Please pull a model in Ollama or choose Cloud fallback.")
-            st.stop()
-            
-        try:
-            msgs = [{"role": "system", "content": system_prompt}]
-            if messages_history:
-                for msg in messages_history:
-                    msgs.append({"role": msg["role"], "content": msg["content"]})
-            msgs.append({"role": "user", "content": user_content})
-            
-            response = ollama.chat(model=model_to_use, messages=msgs)
-            return response["message"]["content"]
-        except Exception as e:
-            st.error(f"Failed to communicate with local Ollama: {e}")
-            st.info("💡 You can switch to 'Cloud Fallback' in the Settings panel if Ollama is not working.")
-            st.stop()
+        return call_gemini(st.session_state.api_key, system_prompt, user_content)
 
 def analyze_email_text(text):
     """Perform static text inspection on the generated email."""
@@ -260,16 +229,8 @@ def analyze_email_text(text):
 
 # ----------------- Session State Init -----------------
 
-if "ollama_online" not in st.session_state:
-    st.session_state.ollama_online = False
-if "ollama_models" not in st.session_state:
-    st.session_state.ollama_models = []
-if "selected_model" not in st.session_state:
-    st.session_state.selected_model = ""
 if "api_key" not in st.session_state:
     st.session_state.api_key = ""
-if "use_cloud" not in st.session_state:
-    st.session_state.use_cloud = False
 if "email_draft" not in st.session_state:
     st.session_state.email_draft = ""
 if "subject_lines" not in st.session_state:
@@ -279,51 +240,23 @@ if "refinement_history" not in st.session_state:
 if "raw_notes" not in st.session_state:
     st.session_state.raw_notes = ""
 
-online, models = check_ollama()
-st.session_state.ollama_online = online
-st.session_state.ollama_models = models
-if online and not st.session_state.selected_model and models:
-    if "llama3:latest" in models:
-        st.session_state.selected_model = "llama3:latest"
-    elif "llama3.1:latest" in models:
-        st.session_state.selected_model = "llama3.1:latest"
-    else:
-        st.session_state.selected_model = models[0]
-
 # ----------------- Sidebar -----------------
 
-st.sidebar.markdown("### 🖥️ Connection Diagnostics")
-if st.session_state.ollama_online:
-    st.sidebar.markdown('<div class="status-badge status-online">● Ollama Connected</div>', unsafe_allow_html=True)
+st.sidebar.markdown("### 🖥️ Gemini Connection")
+if st.session_state.api_key.strip():
+    st.sidebar.markdown('<div class="status-badge status-online">● Gemini Active</div>', unsafe_allow_html=True)
 else:
-    st.sidebar.markdown('<div class="status-badge status-offline">● Ollama Offline</div>', unsafe_allow_html=True)
+    st.sidebar.markdown('<div class="status-badge status-offline">● API Key Required</div>', unsafe_allow_html=True)
 
 st.sidebar.write("")
 
-# Engine Settings
-engine_mode = st.sidebar.radio(
-    "Choose LLM Engine",
-    ["Local Ollama", "Cloud Fallback (Gemini)"],
-    index=1 if not st.session_state.ollama_online else 0
+# API Key Input
+st.session_state.api_key = st.sidebar.text_input(
+    "Gemini API Key", 
+    value=st.session_state.api_key, 
+    type="password",
+    help="Paste a free Gemini API Key from Google AI Studio."
 )
-st.session_state.use_cloud = (engine_mode == "Cloud Backup (Gemini)")
-
-if st.session_state.use_cloud:
-    st.session_state.api_key = st.sidebar.text_input(
-        "Gemini API Key", 
-        value=st.session_state.api_key, 
-        type="password",
-        help="Paste a free Gemini API Key from Google AI Studio."
-    )
-else:
-    if st.session_state.ollama_models:
-        st.session_state.selected_model = st.sidebar.selectbox(
-            "Local Model",
-            st.session_state.ollama_models,
-            index=st.session_state.ollama_models.index(st.session_state.selected_model) if st.session_state.selected_model in st.session_state.ollama_models else 0
-        )
-    else:
-        st.sidebar.warning("No local models found! Pull a model via `ollama run llama3` or toggle Gemini Cloud.")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### ✉️ Formatting Controls")
@@ -352,7 +285,7 @@ selected_language = st.sidebar.selectbox("Draft Language", language_options)
 # ----------------- Main UI -----------------
 
 st.markdown("<h1>✉️ AI Email Workspace</h1>", unsafe_allow_html=True)
-st.markdown("Draft, refine, and inspect high-converting professional emails locally or in the cloud.")
+st.markdown("Draft, refine, and inspect high-converting professional emails using Google Gemini API.")
 
 tabs = st.tabs(["🚀 Workspace", "📋 Templates Library", "📊 AI Inspector", "⚙️ System Status"])
 
@@ -389,6 +322,8 @@ with tabs[0]:
         if generate_clicked:
             if not user_notes.strip():
                 st.warning("⚠️ Enter some rough notes first.")
+            elif not st.session_state.api_key.strip():
+                st.warning("⚠️ Please configure your Gemini API Key in the sidebar to generate emails.")
             else:
                 with st.spinner("Drafting your email..."):
                     sys_prompt = f"""
@@ -611,21 +546,25 @@ with tabs[3]:
     col_stat1, col_stat2 = st.columns(2)
     
     with col_stat1:
-        st.write("### System Connections")
-        if st.session_state.ollama_online:
-            st.success("Ollama is active locally!")
-            st.write("Installed models detected:")
-            for m in st.session_state.ollama_models:
-                st.code(m)
+        st.write("### Gemini API Setup Guide")
+        if st.session_state.api_key.strip():
+            st.success("Google Gemini API is configured and ready!")
         else:
-            st.error("Ollama is offline.")
-            st.write("Ensure the service is running (`ollama serve`) or switch to Gemini Cloud Backup in the sidebar settings.")
+            st.warning("Google Gemini API Key is missing.")
+            
+        st.markdown("""
+        **How to get a free Gemini API Key:**
+        1. Visit [Google AI Studio](https://aistudio.google.com/).
+        2. Sign in with your Google account.
+        3. Click on **Get API Key** in the top left.
+        4. Create a new key and paste it into the **Gemini API Key** field in the sidebar.
+        """)
             
     with col_stat2:
         st.write("### System Info")
         st.info("""
         - **Host OS:** Windows
         - **Framework:** Streamlit (Python)
-        - **Model Clients:** Ollama (Local) / Gemini REST API (Cloud fallback)
+        - **Model Clients:** Google Gemini 1.5 REST API
         - **Theme Settings:** Overridden in `.streamlit/config.toml` (Indigo Dark Theme)
         """)

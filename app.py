@@ -163,19 +163,15 @@ def call_gemini(api_key, system_prompt, user_content):
 
 def call_llm(system_prompt, user_content, messages_history=None):
     """Central function to invoke cloud Gemini API."""
-    if not st.session_state.api_key.strip():
-        st.error("Please enter a valid Gemini API Key in the sidebar.")
-        st.stop()
-    
     # Build prompt from history if refinement is active
     if messages_history:
         combined_prompt = ""
         for msg in messages_history:
             combined_prompt += f"{msg['role'].upper()}: {msg['content']}\n\n"
         combined_prompt += f"USER: {user_content}"
-        return call_gemini(st.session_state.api_key, system_prompt, combined_prompt)
+        return call_gemini(GEMINI_API_KEY, system_prompt, combined_prompt)
     else:
-        return call_gemini(st.session_state.api_key, system_prompt, user_content)
+        return call_gemini(GEMINI_API_KEY, system_prompt, user_content)
 
 def analyze_email_text(text):
     """Perform static text inspection on the generated email."""
@@ -227,10 +223,23 @@ def analyze_email_text(text):
         "spam_triggers": detected_spam
     }
 
+# ----------------- Load API Key from Secrets -----------------
+
+try:
+    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+except (KeyError, FileNotFoundError):
+    st.error(
+        "🔑 **Gemini API key not found.**\n\n"
+        "Please add your key to `.streamlit/secrets.toml`:\n"
+        "```toml\n"
+        "GEMINI_API_KEY = \"your-api-key-here\"\n"
+        "```\n\n"
+        "Restart the app after saving the file."
+    )
+    st.stop()
+
 # ----------------- Session State Init -----------------
 
-if "api_key" not in st.session_state:
-    st.session_state.api_key = ""
 if "email_draft" not in st.session_state:
     st.session_state.email_draft = ""
 if "subject_lines" not in st.session_state:
@@ -243,20 +252,8 @@ if "raw_notes" not in st.session_state:
 # ----------------- Sidebar -----------------
 
 st.sidebar.markdown("### 🖥️ Gemini Connection")
-if st.session_state.api_key.strip():
-    st.sidebar.markdown('<div class="status-badge status-online">● Gemini Active</div>', unsafe_allow_html=True)
-else:
-    st.sidebar.markdown('<div class="status-badge status-offline">● API Key Required</div>', unsafe_allow_html=True)
-
+st.sidebar.markdown('<div class="status-badge status-online">● Gemini Active</div>', unsafe_allow_html=True)
 st.sidebar.write("")
-
-# API Key Input
-st.session_state.api_key = st.sidebar.text_input(
-    "Gemini API Key", 
-    value=st.session_state.api_key, 
-    type="password",
-    help="Paste a free Gemini API Key from Google AI Studio."
-)
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### ✉️ Formatting Controls")
@@ -322,8 +319,6 @@ with tabs[0]:
         if generate_clicked:
             if not user_notes.strip():
                 st.warning("⚠️ Enter some rough notes first.")
-            elif not st.session_state.api_key.strip():
-                st.warning("⚠️ Please configure your Gemini API Key in the sidebar to generate emails.")
             else:
                 with st.spinner("Drafting your email..."):
                     sys_prompt = f"""
@@ -546,18 +541,16 @@ with tabs[3]:
     col_stat1, col_stat2 = st.columns(2)
     
     with col_stat1:
-        st.write("### Gemini API Setup Guide")
-        if st.session_state.api_key.strip():
-            st.success("Google Gemini API is configured and ready!")
-        else:
-            st.warning("Google Gemini API Key is missing.")
-            
+        st.write("### Gemini API Setup")
+        st.success("Google Gemini API is configured and ready!")
         st.markdown("""
-        **How to get a free Gemini API Key:**
-        1. Visit [Google AI Studio](https://aistudio.google.com/).
-        2. Sign in with your Google account.
-        3. Click on **Get API Key** in the top left.
-        4. Create a new key and paste it into the **Gemini API Key** field in the sidebar.
+        **Key is loaded from Streamlit Secrets.**
+        To update or rotate the key:
+        1. Open `.streamlit/secrets.toml` in the project root.
+        2. Set `GEMINI_API_KEY = "your-new-key"`.
+        3. Restart the Streamlit server.
+
+        Don't have a key yet? Visit [Google AI Studio](https://aistudio.google.com/) → **Get API Key**.
         """)
             
     with col_stat2:

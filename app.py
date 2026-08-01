@@ -11,58 +11,60 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom premium styling
+# Custom soft-light styling
 st.markdown("""
 <style>
-    /* Global styles and typography */
+    /* ── Fonts ── */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;600;700&display=swap');
-    
+
     html, body, [data-testid="stAppViewContainer"] {
         font-family: 'Inter', sans-serif;
+        background-color: #f8f7ff;
     }
-    
+
+    /* ── Headings gradient: soft violet → periwinkle ── */
     h1, h2, h3, .title-gradient {
         font-family: 'Outfit', sans-serif;
         font-weight: 700;
-        background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 50%, #6366f1 100%);
+        background: linear-gradient(135deg, #a78bfa 0%, #7c6af7 50%, #6d5ce8 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
 
-    /* Mock Email Composer Layout */
+    /* ── Mock Email Card ── */
     .email-mock-card {
-        background-color: #111827 !important;
-        border: 1px solid #1f2937 !important;
-        border-radius: 12px !important;
-        padding: 24px !important;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2) !important;
+        background-color: #ffffff !important;
+        border: 1px solid #e4e1f5 !important;
+        border-radius: 14px !important;
+        padding: 26px !important;
+        box-shadow: 0 4px 20px rgba(124, 106, 247, 0.08), 0 1px 4px rgba(0,0,0,0.04) !important;
         margin-top: 10px;
         margin-bottom: 20px;
     }
-    
+
     .email-mock-header {
-        border-bottom: 1px solid #1f2937;
+        border-bottom: 1px solid #ede9fc;
         padding-bottom: 14px;
         margin-bottom: 18px;
         font-size: 0.95rem;
-        color: #9ca3af;
+        color: #6b7280;
         line-height: 1.5;
     }
-    
+
     .email-mock-label {
-        color: #6366f1;
+        color: #7c6af7;
         font-weight: 600;
         margin-right: 8px;
     }
-    
+
     .email-mock-body {
         font-size: 1.05rem;
-        line-height: 1.6;
-        color: #f3f4f6 !important;
+        line-height: 1.7;
+        color: #1e1a3c !important;
         white-space: pre-wrap;
     }
 
-    /* Chat bubble system for refinements */
+    /* ── Chat Bubbles ── */
     .chat-bubble-container {
         display: flex;
         flex-direction: column;
@@ -70,66 +72,87 @@ st.markdown("""
         margin-top: 15px;
         margin-bottom: 15px;
     }
-    
+
     .chat-bubble {
         padding: 12px 16px;
         border-radius: 14px;
         max-width: 80%;
         font-size: 0.95rem;
-        line-height: 1.4;
+        line-height: 1.5;
     }
-    
+
     .bubble-user {
-        background-color: #4f46e5;
+        background: linear-gradient(135deg, #a78bfa, #7c6af7);
         color: #ffffff;
         align-self: flex-end;
-        border-bottom-right-radius: 2px;
-        box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+        border-bottom-right-radius: 3px;
+        box-shadow: 0 4px 12px rgba(124, 106, 247, 0.25);
     }
-    
+
     .bubble-ai {
-        background-color: #1f2937;
-        color: #e5e7eb;
+        background-color: #f0eeff;
+        color: #1e1a3c;
         align-self: flex-start;
-        border-bottom-left-radius: 2px;
-        border: 1px solid #374151;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border-bottom-left-radius: 3px;
+        border: 1px solid #ddd8fa;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
     }
-    
+
     .bubble-meta {
-        font-size: 0.75rem;
+        font-size: 0.74rem;
         color: #9ca3af;
         margin-bottom: 4px;
         display: block;
         font-weight: 500;
     }
 
-    /* Metrics Cards */
+    /* ── Status Badges ── */
     .status-badge {
-        padding: 6px 12px;
+        padding: 6px 14px;
         border-radius: 20px;
-        font-size: 0.85rem;
+        font-size: 0.82rem;
         font-weight: 600;
         display: inline-block;
+        letter-spacing: 0.01em;
     }
     .status-online {
-        background: rgba(16, 185, 129, 0.1);
-        color: #34d399;
-        border: 1px solid rgba(16, 185, 129, 0.3);
+        background: rgba(52, 211, 153, 0.12);
+        color: #059669;
+        border: 1px solid rgba(52, 211, 153, 0.35);
     }
     .status-offline {
-        background: rgba(239, 68, 68, 0.1);
-        color: #f87171;
-        border: 1px solid rgba(239, 68, 68, 0.3);
+        background: rgba(251, 113, 133, 0.1);
+        color: #e11d48;
+        border: 1px solid rgba(251, 113, 133, 0.3);
     }
-    
-    /* Hover effects for Streamlit elements */
+
+    /* ── Button Micro-animations ── */
     .stButton > button {
         transition: all 0.2s ease-in-out !important;
+        border-radius: 10px !important;
     }
     .stButton > button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(124, 106, 247, 0.22) !important;
+    }
+
+    /* ── Sidebar refinements ── */
+    [data-testid="stSidebar"] {
+        background-color: #f0eeff !important;
+        border-right: 1px solid #e4e1f5 !important;
+    }
+
+    /* ── Input & Textarea borders ── */
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea {
+        border-radius: 10px !important;
+        border-color: #d8d3f5 !important;
+        background-color: #ffffff !important;
+    }
+    .stTextInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus {
+        border-color: #7c6af7 !important;
+        box-shadow: 0 0 0 3px rgba(124, 106, 247, 0.12) !important;
     }
 </style>
 """, unsafe_allow_html=True)

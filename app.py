@@ -138,7 +138,7 @@ st.markdown("""
 
 def call_gemini(api_key, system_prompt, user_content):
     """Call Google Gemini API via direct HTTP request."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
     data = {
         "contents": [
@@ -158,8 +158,16 @@ def call_gemini(api_key, system_prompt, user_content):
         with urllib.request.urlopen(req) as response:
             res_data = json.loads(response.read().decode("utf-8"))
             return res_data["candidates"][0]["content"]["parts"][0]["text"]
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode("utf-8")
+        try:
+            error_json = json.loads(error_body)
+            msg = error_json.get("error", {}).get("message", error_body)
+        except Exception:
+            msg = error_body
+        raise Exception(f"Gemini API error {e.code}: {msg}")
     except Exception as e:
-        raise Exception(f"Gemini API execution failed: {e}")
+        raise Exception(f"Gemini API request failed: {e}")
 
 def call_llm(system_prompt, user_content, messages_history=None):
     """Central function to invoke cloud Gemini API."""
@@ -558,6 +566,6 @@ with tabs[3]:
         st.info("""
         - **Host OS:** Windows
         - **Framework:** Streamlit (Python)
-        - **Model Clients:** Google Gemini 1.5 REST API
+        - **Model Clients:** Google Gemini 2.0 Flash REST API
         - **Theme Settings:** Overridden in `.streamlit/config.toml` (Indigo Dark Theme)
         """)
